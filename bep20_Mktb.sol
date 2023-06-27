@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.9.0;
-
+//okay
 interface IBEP20 {
   
   function totalSupply() external view returns (uint256);
@@ -39,7 +39,8 @@ interface IBEP20 {
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-
+/******************* */
+//why creating this contract?? update1: seems like we shouldn't use msg.sender & msg.data directly but why?
 contract Context {
   
   constructor () internal { }
@@ -53,8 +54,8 @@ contract Context {
     return msg.data;
   }
 }
-
-
+/*********************** */
+//okay
 library SafeMath {
   
   function add(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -77,7 +78,7 @@ library SafeMath {
     return c;
   }
 
-  
+
   function mul(uint256 a, uint256 b) internal pure returns (uint256){
     
     if (a == 0) {
@@ -115,7 +116,9 @@ library SafeMath {
   }
 }
 
-
+/****************************************** ******************/
+//so with this contract we can change the owner of token. It's related to minting new tokens.
+//why not using msg.sender instead of Context? 
 contract Ownable is Context {
   address private _owner;
 
@@ -157,6 +160,7 @@ contract Ownable is Context {
     _owner = newOwner;
   }
 }
+/************************************************* */
 
 contract BEP20Token is Context, IBEP20, Ownable {
   using SafeMath for uint256;
