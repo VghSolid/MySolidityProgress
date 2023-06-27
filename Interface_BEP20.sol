@@ -21,7 +21,7 @@ interface IBEP20{
     function allowance(address owner, address spender) external view returns(uint256);
     
     function transferfrom(address sender, address recipient, uint256 amount) external returns(bool);
-    /*---------------------------------------------------------------------------------------------*/
+    /*----------------------------------------------------------------------------------------------*/
     event Transfer(address indexed from, address indexed to, uint256 amount);
     
     event Approval(address indexed owner, address indexed spender, uint256 value);
