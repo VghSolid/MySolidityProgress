@@ -41,6 +41,9 @@ interface IBEP20 {
 
 /******************* */
 //why creating this contract?? update1: seems like we shouldn't use msg.sender & msg.data directly but why?
+/*update2: based on OpenZeppelin version of this contract, it's related to meta-transactions. The actual sender
+and the paying address may differ*/
+
 contract Context {
   
   constructor () internal { }
