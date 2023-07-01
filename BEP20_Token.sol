@@ -77,6 +77,51 @@ contract BEP20 is IBEP20{
         emit Transfer(sender, recipient, amount);
         return (true);
     }
+    //In emit line: why address(0)?
+    //mint should be onlyowner.
+    function mint(address account,uint256 amount) internal {
+        require(account != address(0));
+
+        _totalsupply = _totalsupply.add(amount);
+        _balance[account] = _balance[account].add(amount);
+
+        emit Transfer(address(0), account, amount);
+    }
+    //In emit line: makes sense to use address(0) for burning.
+    function burn(address account,uint256 amount) internal {
+        require(account != address(0));
+        require(amount <= _balance[account]);
+
+        _totalsupply = _totalsupply.sub(amount);
+        _balance[account] = _balance[account].sub(amount);
+
+        emit Transfer(account, address(0), amount);
+    }
+    //needs approve function. same as transferfrom.
+    function burnfrom(address account, uint256 amount) internal {
+        require(amount <= _allowed[account][msg.sender]);
+        _allowed[account][msg.sender] = _allowed[account][msg.sender].sub(amount);
+        
+        burn(account, amount);
+        emit Approval(account, msg.sender, _allowed[account][msg.sender]);
+    }
+    //This is an anti_cheat for approve function. The cheating technique is called "front-running".
+    function increaseAllowance (address spender, uint256 addedvalue) public returns(bool) {
+        require(spender != address(0));
+        _allowed[msg.sender][spender] = _allowed[msg.sender][spender].add(addedvalue);
+
+        emit Approval(msg.sender, spender, _allowed[msg.sender][spender]);
+        return(true);
+    }
+    function decreaseAllowance (address spender, uint256 subedvalue) public returns(bool) {
+        require(spender != address(0));
+        require(subedvalue <= _allowed[msg.sender][spender]);
+
+        _allowed[msg.sender][spender] = _allowed[msg.sender][spender].sub(subedvalue);
+        emit Approval(msg.sender, spender, _allowed[msg.sender][spender]);
+        return(true);
+    }
+
 
     
         
