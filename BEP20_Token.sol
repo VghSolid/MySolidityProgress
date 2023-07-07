@@ -3,10 +3,12 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "./Token_SafeMath.sol";
 import "./Interface_BEP20.sol";
+import "./Ownable.sol";
+import "./Context.sol";
 
 //we have this error: "contract BEP20 should be marked as abstract". This error will remain until we insert 
 //all the functions from the interface "IBEP20".
-contract BEP20 is IBEP20{
+contract BEP20 is context, IBEP20, ownable {
    using SafeMath for uint256;//SafeMath is the name of a library.
 
    string private _name;
@@ -37,49 +39,54 @@ contract BEP20 is IBEP20{
    function symbol() external view returns(string memory) {
     return _symbol;
    }
-   function getowner() external view returns (address){}
+   function getowner() external view returns (address){
+    return owner();
+   }
    function balanceof(address account) external view returns(uint256){
     return _balance[account];
    }
 
     function transfer(address recipient, uint256 amount) external returns(bool){
-        require(amount <= _balance[msg.sender]);
-        require(recipient != address(0));
-
-        _balance[msg.sender] = _balance[msg.sender].sub(amount);
-        _balance[recipient] = _balance[recipient].add(amount);
-
-        emit Transfer(msg.sender, recipient, amount);
+        _transfer(_msgSender(), recipient, amount);
         return (true);
     }
-
-    function allowance(address owner, address spender) external view returns(uint256){
-        return _allowed[owner][spender];
-    }
-
-    function approve(address spender, uint256 value) external returns(bool){
-        require(spender != address(0));
-        _allowed[msg.sender][spender] = value;
-
-        emit Approval(msg.sender, spender, value);
-        return(true);
-    }
-    //This is the function that a spender calls to spend an allowance so msg.sender is the spender.
-    function transferfrom(address sender,address recipient,uint256 amount) external returns(bool){
-        require(amount <= _balance[sender]);
-        require(amount <= _allowed[sender][msg.sender]);
-        require(recipient != address(0));
+    function _transfer(address sender,address recipient, uint256 amount) internal returns(bool){
+        require(amount <= _balance[sender],"Not enough balance");
+        require(recipient != address(0),"zero address is not acceptable");
+        require(sender != address(0),"zero address is not acceptable");
 
         _balance[sender] = _balance[sender].sub(amount);
-        _allowed[sender][msg.sender] = _allowed[sender][msg.sender].sub(amount);
         _balance[recipient] = _balance[recipient].add(amount);
 
         emit Transfer(sender, recipient, amount);
         return (true);
     }
+    function allowance(address owner, address spender) external view returns(uint256){
+        return _allowed[owner][spender];
+    }
+
+    function approve(address spender, uint256 value) external returns(bool){
+        _approve(_msgSender(), spender, value);
+        return(true);
+    }
+    function _approve(address owner,address spender, uint256 value) internal returns(bool){
+        require(spender != address(0),"zero address is not acceptable");
+        require(owner != address(0),"zero address is not acceptable");
+
+        _allowed[owner][spender] = value;
+        emit Approval(owner, spender, value);
+        return(true);
+    }
+    //This is the function that a spender calls to spend an allowance so msg.sender is the spender.
+    function transferfrom(address sender,address recipient,uint256 amount) external returns(bool){
+        require(amount <= _allowed[sender][_msgSender()]);
+        _transfer(sender, recipient, amount);
+        _approve(sender, _msgSender(), _allowed[sender][_msgSender()].sub(amount));
+        return (true);
+    }
     //In emit line: why address(0)?
     //mint should be onlyowner.
-    function mint(address account,uint256 amount) internal {
+    function _mint(address account,uint256 amount) internal {
         require(account != address(0));
 
         _totalsupply = _totalsupply.add(amount);
@@ -88,7 +95,7 @@ contract BEP20 is IBEP20{
         emit Transfer(address(0), account, amount);
     }
     //In emit line: makes sense to use address(0) for burning.
-    function burn(address account,uint256 amount) internal {
+    function _burn(address account,uint256 amount) internal {
         require(account != address(0));
         require(amount <= _balance[account]);
 
@@ -99,26 +106,19 @@ contract BEP20 is IBEP20{
     }
     //needs approve function. same as transferfrom.
     function burnfrom(address account, uint256 amount) internal {
-        require(amount <= _allowed[account][msg.sender]);
-        _allowed[account][msg.sender] = _allowed[account][msg.sender].sub(amount);
-        
-        burn(account, amount);
-        emit Approval(account, msg.sender, _allowed[account][msg.sender]);
+        require(amount <= _allowed[account][_msgSender()]);
+        _burn(account, amount);
+        _allowed[account][_msgSender()] = _allowed[account][_msgSender()].sub(amount);
+        emit Approval(account, _msgSender(), _allowed[account][_msgSender()]);
     }
     //This is an anti_cheat for approve function. The cheating technique is called "front-running".
     function increaseAllowance (address spender, uint256 addedvalue) public returns(bool) {
-        require(spender != address(0));
-        _allowed[msg.sender][spender] = _allowed[msg.sender][spender].add(addedvalue);
-
-        emit Approval(msg.sender, spender, _allowed[msg.sender][spender]);
+        _approve(_msgSender(), spender, _allowed[_msgSender()][spender].add(addedvalue));
         return(true);
     }
     function decreaseAllowance (address spender, uint256 subedvalue) public returns(bool) {
-        require(spender != address(0));
-        require(subedvalue <= _allowed[msg.sender][spender]);
-
-        _allowed[msg.sender][spender] = _allowed[msg.sender][spender].sub(subedvalue);
-        emit Approval(msg.sender, spender, _allowed[msg.sender][spender]);
+        require(subedvalue <= _allowed[_msgSender()][spender]);
+        _approve(_msgSender(), spender, _allowed[_msgSender()][spender].sub(subedvalue));
         return(true);
     }
 
