@@ -24,7 +24,7 @@ contract BEP20 is context, IBEP20, ownable {
     _symbol = "MBT";
     _decimal = 5;
     _totalsupply = 2100000000000;
-    _balance[msg.sender] = _totalsupply;
+    _balance[_msgSender()] = _totalsupply;
    }
 
    function decimal() external view returns(uint8) {
