@@ -18,6 +18,8 @@ abstract contract ERC20_new is context,IERC20, IERC20Errors {
     string private _symbol;
     uint256 private _totalsupply;
 
+    error ERC20FailedDecreaseAllowance(address spender, uint256 currentAllowance, uint256 requestedDecrease);
+
     constructor(string memory name_, string memory symbol_) {
         _name = name_;
         _symbol = symbol_;
@@ -150,5 +152,23 @@ abstract contract ERC20_new is context,IERC20, IERC20Errors {
                 _approve(owner, spender, currentAllowance-value, false);
             }
         }
+    }
+
+    function increaseAllowance(address spender, uint256 addedvalue) public virtual returns(bool) {
+        address owner = _msgSender();
+        _approve(owner, spender, allowance(owner, spender) + addedvalue);
+        return true;
+    }
+    function decreaseAllowance(address spender, uint256 requestedDecrease) public virtual returns(bool) {
+        address owner = _msgSender();
+        uint256 currentAllowance = allowance(owner, spender);
+        if(currentAllowance < requestedDecrease) {
+            revert ERC20FailedDecreaseAllowance(spender, currentAllowance, requestedDecrease);
+        }
+        unchecked {
+            _approve(owner, spender, currentAllowance - requestedDecrease);
+        }
+        return true;
+
     }
 }
