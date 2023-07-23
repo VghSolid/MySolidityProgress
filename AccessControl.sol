@@ -13,9 +13,18 @@ abstract contract AccessControl is context, IAccessControl{
 
     bytes32 constant public Default_Admin_Role = 0x00;
 
+    //modifer and check role functions
     modifier onlyRole(bytes32 role){
         _checkRole(role);
         _;
+    }
+    function _checkRole(bytes32 role) internal view {
+        _checkRole(role,_msgSender());
+    }
+    function _checkRole(bytes32 role,address account) internal view {
+        if(hasRole(role, account)==false){
+            revert AccessControlUnauthorizedAccount(account, role);
+        }
     }
 
     //Is this account has a role?
@@ -32,29 +41,40 @@ abstract contract AccessControl is context, IAccessControl{
     function grantRole(bytes32 role,address account) public virtual onlyRole(getRoleAdmin(role)) {
         _grantRole(role,account);
     }
+    
+    //revoke a role from account_ by account itself.
+    function renounceRole(bytes32 role,address callerConfirmation) public virtual {
+        if(callerConfirmation != _msgSender()){
+            revert AccessControlBadConfirmation();
+        }
+        _revokeRole(role, callerConfirmation);
+    }
+
+    //revoke a role from account_ by admin.
+    function revokeRole(bytes32 role,address account) public virtual onlyRole(getRoleAdmin(role)) {
+        _revokeRole(role,account);
+    }
+
+    function _revokeRole(bytes32 role , address account) internal virtual {
+        if(hasRole(role, account)){
+            _roles[role].members[account] = false;
+            emit RoleRevoked(role, account, _msgSender());
+        }
+    }
     function _grantRole(bytes32 role, address account) internal virtual{
         if(!hasRole(role, account)){
             _roles[role].members[account] = true;
             emit RoleGranted(role, account, _msgSender());
         }
     }
-    //revoke a role from account.
-    function revokeRole(bytes32 role,address account) public virtual onlyRole(getRoleAdmin(role)) {
-        _revokeRole(role,account);
-    }
-    function _revokeRole(bytes32 role , address account) internal virtual {
-        if(hasRole(role, account)){
-            
-        }
-    }
-    //
-    function renounceRole(bytes32 role,address callerConfirmation) public virtual {
 
+    function _setRoleAdmin(bytes32 role, bytes32 adminRole) public virtual {
+        bytes32 previousAdminRole = getRoleAdmin(role);
+        _roles[role].adminRole = adminRole;
+        emit RoleAdminChanged(role, previousAdminRole, adminRole);
     }
-    //
-    function _checkRole(bytes32 role) internal view {
-        require(hasRole(role, _msgSender()),"You're not the role's admin");
-    }
+    
+    
 
 
 
