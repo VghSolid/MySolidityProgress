@@ -8,7 +8,7 @@ contract MultiSend is context,AccessControl{
     //emp: employee
     address [] private _emplist;
     mapping (string => address) private _Addrs;
-    mapping (string => uint256) private _Index; 
+    mapping (address => uint256) private _Index; 
 
     //roles defenition
     bytes32 constant public worker = keccak256("worker");
@@ -29,27 +29,32 @@ contract MultiSend is context,AccessControl{
         _Addrs[name] = _msgSender();
     }
     
-    //admin grants role to employees
+    //give the emp a role | add it to the dynamic array | give its address an index.
     function addEmployee(bytes32 role, string name) public onlyRole(getRoleAdmin(role)){
         address account = _Addrs[name];
 
         _grantRole(role, account);
 
         _emplist.push(account);
+
         uint256 index = _emplist.length - 1;
-        _Index[name] = index;
+        _Index[account] = index;
     }
 
-    function removeEmployee (string memory name) public onlyBoss {
-        uint256 index = _Index[name];
-        _emplist[index] = _emplist[_emplist.length-1];
-        _emplist.pop();
-        //??????
-       _Index[lastElement] = index;
+    // revoke emp's role | replace its address from the array with the last element | update all mappings. 
+    function removeEmployee (bytes32 role ,string memory name) public onlyRole(getRoleAdmin(role)) {
+        address account = _Addrs[name];
+        _revokeRole(role, account);
+
+        uint256 index = _Index[account];
+        address lastEmp = _emplist[_emplist.length-1];
+        _emplist[index] = lastEmp;
+       _Index[lastEmp] = index;
+       _emplist.pop();
+       //next we should remove the employee from the mappings. how?
     }
 
 
-    //onlyBoss modifier(use roles)
     function transferSalary (uint256 _amount) public onlyBoss() {
         for (uint256 i=0; i<= list.length; i++) {
             _emplist[i].call{value: _amount}("");
@@ -61,19 +66,14 @@ contract MultiSend is context,AccessControl{
 
 }
 /*what to add:
-1- Remove someone from the list based on their name. [DONE]
-+ how to update index of other members? /solved by Remix_Multisend
+1- Remove someone from the list based on their name. ---------[DONE]
++ how to update index of other members? /solved by Remix_Multisend / ---------[DONE]
 + how to remove them from mapping? / we can use "delete", but it sets the value of mapping to zero. we already 
   have zero an an index. what should we do? 
    
 2- Employess get different amount of salary. how to implemnt that? I think defining roles can be the solution.
-3- Use access control to add onlyEmployee and onlyBoss. how to add roles?
-*/
-
-/*possible Bugs:
-1- function addAddrs: employees can add mutiple accounts. (should be one) / add roles maybe
+3- Use access control to add onlyEmployee and onlyBoss. how to add roles? -------[DONE]
 */
 
 
-//****************           CONTINIUE        *********************
-//How to add roles to my contract?
+
