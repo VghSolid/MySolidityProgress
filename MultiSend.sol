@@ -24,22 +24,23 @@ contract MultiSend is context,AccessControl{
 
     /*----------------------------------- Functions ----------------------------*/
 
-    function addyourAddrs(string name, address yourWallet) public {
-        _Addrs[name] = yourWallet;
+    //For employees to add their wallet address to the mapping.
+    function addyourAddrs(string name) public {
+        _Addrs[name] = _msgSender();
     }
+    
+    //admin grants role to employees
+    function addEmployee(bytes32 role, string name) public onlyRole(getRoleAdmin(role)){
+        address account = _Addrs[name];
 
-    function grantRole(bytes32 role, address account) public;
-    // how to inherit a function already and add some extra stuff to it? is it overriding?
-        
-    function addEmp (string memory name) public onlyBoss() {
-        address account = _msgSender();
+        _grantRole(role, account);
+
         _emplist.push(account);
-
         uint256 index = _emplist.length - 1;
         _Index[name] = index;
     }
 
-    function removeAddrs(string memory name) public onlyBoss {
+    function removeEmployee (string memory name) public onlyBoss {
         uint256 index = _Index[name];
         _emplist[index] = _emplist[_emplist.length-1];
         _emplist.pop();
@@ -63,9 +64,9 @@ contract MultiSend is context,AccessControl{
 1- Remove someone from the list based on their name. [DONE]
 + how to update index of other members? /solved by Remix_Multisend
 + how to remove them from mapping? / we can use "delete", but it sets the value of mapping to zero. we already 
-_ have zero an an index. what should we do? 
+  have zero an an index. what should we do? 
    
-2- Employess get different amount of salary. how to implemnt that? I think defining roles can be the solution
+2- Employess get different amount of salary. how to implemnt that? I think defining roles can be the solution.
 3- Use access control to add onlyEmployee and onlyBoss. how to add roles?
 */
 
