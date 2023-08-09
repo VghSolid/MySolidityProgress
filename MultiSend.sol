@@ -6,9 +6,12 @@ import "./AccessControl.sol";
 
 contract MultiSend is context,AccessControl{
     //emp: employee
+    struct Data{
+        uint256 index;
+    }
     address [] private _emplist;
-    mapping (string => address) private _Addrs;
-    mapping (address => uint256) private _Index; 
+    mapping (address => Data) private map; 
+    mapping (string => address) private addrs;
 
     //roles defenition
     bytes32 constant public worker = keccak256("worker");
@@ -24,39 +27,55 @@ contract MultiSend is context,AccessControl{
 
     /*----------------------------------- Functions ----------------------------*/
 
-    //For employees to add their wallet address to the mapping.
-    function addyourAddrs(string name) public {
-        _Addrs[name] = _msgSender();
+    //For employees to add their wallet address to the mapping. (write your name like this: Ali Ahmadi)
+    function addyourdata(string name) public {
+        addrs[name] = _msgSender();
     }
     
     //give the emp a role | add it to the dynamic array | give its address an index.
     function addEmployee(bytes32 role, string name) public onlyRole(getRoleAdmin(role)){
-        address account = _Addrs[name];
+        address account = addrs[name];
+        Data storage data = map[account];
+
+        require(data.index == 0,"This account already exists");
 
         _grantRole(role, account);
 
         _emplist.push(account);
 
-        uint256 index = _emplist.length - 1;
-        _Index[account] = index;
+        uint256 realIndex = _emplist.length - 1;
+        data.index = realIndex + 1;
     }
 
     // revoke emp's role | replace its address from the array with the last element | update all mappings. 
     function removeEmployee (bytes32 role ,string memory name) public onlyRole(getRoleAdmin(role)) {
-        address account = _Addrs[name];
+        address account = addrs[name];
+        Data storage data = map[account];
+
+        require(data.index != 0,"This account does not exist");
+
         _revokeRole(role, account);
 
-        uint256 index = _Index[account];
-        address lastEmp = _emplist[_emplist.length-1];
-        _emplist[index] = lastEmp;
-       _Index[lastEmp] = index;
-       _emplist.pop();
-       //next we should remove the employee from the mappings. how?
+        uint256 realIndex= data.index -1;
+        address lastEmp = _emplist[_emplist.length -1];
+        _emplist[realIndex] = lastEmp;
+
+        //update the index of lastEmp
+        map[lastEmp].index = data.index;
+
+        //remove the last element of array(lastemp)
+        _emplist.pop();
+
+        //remove the index of removed employee;
+        data.index = 0;
     }
 
+    function empNumbers() public view returns(uint256){
+        return _emplist.length;
+    }
 
-    function transferSalary (uint256 _amount) public onlyBoss() {
-        for (uint256 i=0; i<= list.length; i++) {
+    function transferSalary (uint256 _amount) public onlyBoss() { //next: can we divide employees by their roles?
+        for (uint256 i=0; i<= list.length; i++) {                 // and give each different salaries.
             _emplist[i].call{value: _amount}("");
         }
     } 
@@ -69,7 +88,7 @@ contract MultiSend is context,AccessControl{
 1- Remove someone from the list based on their name. ---------[DONE]
 + how to update index of other members? /solved by Remix_Multisend / ---------[DONE]
 + how to remove them from mapping? / we can use "delete", but it sets the value of mapping to zero. we already 
-  have zero an an index. what should we do? 
+  have zero an an index. what should we do? ---------- [DONE] 
    
 2- Employess get different amount of salary. how to implemnt that? I think defining roles can be the solution.
 3- Use access control to add onlyEmployee and onlyBoss. how to add roles? -------[DONE]
