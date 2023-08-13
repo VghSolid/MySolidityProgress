@@ -12,6 +12,15 @@ abstract contract AccessControl is context, IAccessControl{
     mapping (bytes32 => RoleData) private _roles;
 
     bytes32 constant public Default_Admin_Role = 0x00;
+    //------------------------------------------------- only use in constructors ------- 
+    function _setupRole(bytes32 role, address account) internal virtual {
+        _roles[role].members[account] = true;
+        emit RoleGranted(role, account, _msgSender());
+    }
+    function _setupAdminRole(bytes32 role,bytes32 adminrole) internal virtual {
+        _roles[role].adminRole = adminrole;
+    }
+    //---------------------------------------------------------
 
     //modifer and check role functions
     modifier onlyRole(bytes32 role){
