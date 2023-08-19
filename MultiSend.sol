@@ -3,7 +3,11 @@ pragma solidity >0.8.0 <0.9.0;
 
 import "./Context.sol";
 import "./AccessControl.sol";
-
+/*This project did not work as I expected but as result I learned:
+1- How to remove(not delete) an item form an array based on its address(we don't know the index).
+2- How to inherit and use AccessControl.sol 
+*/
+// I wrote another code for this priject(MultiSendII). Remember you learn through these mistakes. 
 contract MultiSend is context,AccessControl{
     //emp: employee
     struct Data{
@@ -13,9 +17,9 @@ contract MultiSend is context,AccessControl{
     uint256 private ContractBalance; 
     address private owner;
 
-    address payable [] private _emplist;
-    mapping (address => Data) private map; 
-    mapping (string => address payable) private addrs;
+    address payable [] public _emplist;
+    mapping (address => Data) public map; 
+    mapping (string => address payable) public addrs;
 
     modifier onlyAdmin {
         require(_msgSender() == owner,"Access Denied");
@@ -83,55 +87,53 @@ contract MultiSend is context,AccessControl{
         data.index = 0;
     }
 
-    //each role has how many addresses? 
-    //payable or non-payable?
     
 
     function charge() public payable onlyAdmin {
         ContractBalance += msg.value;
     }
 
-    function totalSalary(uint256 worker_amount, uint256 engineer_amount) private view returns (uint256) {
-        uint256 total_Salary = 0;
+    function countRole(bytes32 role) private view returns (uint256) {//test this seprately
         uint256 j=0;
-        uint256 k=0;
+    
         for (uint256 i=0; i<= _emplist.length; i++){
             Data storage data = map[_emplist[i]];
             bytes32 empRole = data.role;
 
-            if(empRole == worker) {
-                j = j+1;
-            }else{
-                k = k+1;
+            if(empRole == role) {
+                j++;
             }
         }
-        total_Salary = total_Salary + j*worker_amount + k*engineer_amount;
-        return total_Salary;
+        return j;       
     } 
 
-    function PaySalary (uint256 worker_amount, uint256 engineer_amount) public payable onlyAdmin { //test this without payable too
-        ContractBalance += msg.value;
+    function roleArray(bytes32 role) public view returns(address payable[] memory){//test this seprately
+        uint256 length = countRole(role);
+        address payable[] memory result = new address payable[](length);
+
+        for (uint256 i=0; i<= _emplist.length; i++){
+            Data storage data = map[_emplist[i]];
+            bytes32 empRole = data.role;
+
+            if(empRole == role){
+                result[i] = _emplist[i];
+            }
+        } 
+        return result;   
+    }   
+
+    //this is not working. 
+    /*function PaySalary (uint256 worker_amount, uint256 engineer_amount) public payable onlyAdmin { 
+      
         uint256 total_salary = totalSalary(worker_amount, engineer_amount);
         require(ContractBalance >= total_salary ,"not enough balance");
 
-        for (uint256 i=0; i<= _emplist.length; i++) { 
-            Data storage data = map[_emplist[i]];
-            bytes32 empRole = data.role;
-            if(empRole == worker){
-                (bool sent,) = _emplist[i].call{value: worker_amount}("");
-                require(sent == true,"");
-            }else{
-                (bool sent,) = _emplist[i].call{value: engineer_amount}("");
-                require(sent == true,"");
-            }
-        }
-        ContractBalance -= total_salary;
-    } 
-
-
-
-
+    } */
 }
+
+
+
+
 /*what to add:
 1- Remove someone from the list based on their name. ---------[DONE]
 + how to update index of other members? /solved by Remix_Multisend / ---------[DONE]
@@ -140,6 +142,8 @@ contract MultiSend is context,AccessControl{
    
 2- Employess get different amount of salary. how to implemnt that? I think defining roles can be the solution.------[Done]
 3- Use access control to add onlyEmployee and onlyBoss. how to add roles? -------[DONE]
+4- solidity doesn't support dynamic array in memory(only storage). So we can't pull out rolebased arrays 
+   from emplist. how solve this?
 */
 
 
