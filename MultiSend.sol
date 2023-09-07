@@ -1,13 +1,15 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >0.8.0 <0.9.0;
 
+//                 *****************************  Not Finished  ****************************
+
 import "./Context.sol";
 import "./AccessControl.sol";
 /*This project did not work as I expected but as result I learned:
 1- How to remove(not delete) an item form an array based on its address(we don't know the index).
 2- How to inherit and use AccessControl.sol 
 */
-// I wrote another code for this priject(MultiSendII). Remember you learn through these mistakes. 
+// I will write another code for this priject(MultiSendII). Remember you learn through these mistakes. 
 contract MultiSend is context,AccessControl{
     //emp: employee
     struct Data{
