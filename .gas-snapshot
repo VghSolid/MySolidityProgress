@@ -1,0 +1,4 @@
+TestAuction:test_Auction() (gas: 716615)
+TestAuction:test_CanOwnerEndAuction() (gas: 136070)
+TestAuction:test_EndAuction() (gas: 595616)
+TestAuction:test_SingleBidder() (gas: 140650)
