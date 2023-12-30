@@ -5,21 +5,22 @@ contract Auction {
     uint256 private s_auctionDuration;
     uint256 private s_startingTime;
     address private immutable i_owner;
+    bool private s_canceled;
 
     mapping(address => uint256) private s_offeredPrice;
-    mapping(address => bool) private s_isBidderOut;
+    mapping(address => bool) private s_isBidder;
     address[] private s_biddersList; // an array including bidder's addresses
 
     address private s_winner;
-    uint256 private s_lastBid;
+    uint256 private s_highestBid;
 
-    event auctionEnded(address winner, uint256 finalOffer, string theMassage);
-    event highestBidIncreased(
-        address currentWinner,
-        uint256 lastOffer,
+    event highestBidChanged(
+        address theWinner,
+        uint256 highestOffer,
         string theMassage
     );
     event auctionStarted(string theMassage);
+    event auctionCanceled();
 
     constructor() {
         s_auctionDuration = 1 hours;
@@ -39,17 +40,39 @@ contract Auction {
         _;
     }
 
+    modifier notOwner() {
+        require(msg.sender != i_owner, "Owner can't bid");
+        _;
+    }
+
+    modifier onlyNotCanceled() {
+        require(!s_canceled, "Auction is canceled");
+        _;
+    }
+
+    modifier onlyCanceledOrEnded() {
+        require(
+            s_canceled || block.timestamp >= s_startingTime + s_auctionDuration,
+            "wait until the auction ends or to be canceled"
+        );
+        _;
+    }
+
     /*******************/
 
-    //setting up new times for next auction
+    //setting up the next auction
     function SetNewAuction(
         uint256 week,
         uint256 day,
         string memory theMassage
-    ) external onlyOwner {
-        require(block.timestamp >= s_startingTime + s_auctionDuration);
-        s_lastBid = 0;
+    ) external onlyOwner onlyCanceledOrEnded {
+        s_highestBid = 0;
         s_winner = address(0);
+        s_biddersList = new address[](0);
+        if (s_canceled) {
+            s_canceled = false;
+        }
+
         uint256 toSeconds = ConvertToSeconds(week, day);
         s_auctionDuration = toSeconds;
         s_startingTime = block.timestamp;
@@ -61,31 +84,41 @@ contract Auction {
         require(sent, "failed to send eth");
     }
 
-    //warning: before bidding first check the last offered price, your offering price should be more.
-    function Bid() external payable haveTime {
-        require(
-            s_offeredPrice[msg.sender] == 0,
-            "You've already bid once, if you wanna bid higher use IncreaseBid"
-        );
-        require(msg.value > s_lastBid, "offer a higher price than current one");
-        s_offeredPrice[msg.sender] = msg.value;
-        s_biddersList.push(msg.sender);
+    //warning: before bidding, first check the last offered price, your offering price should be more.
+    /*warning: if we want to combine Bid & IncreaseBid: in case of raising bids, msg.value should be (newoffer - lastoffer) but the user 
+    just needs to put (newoffer). It's related to front-end.
+    */
+    function Bid()
+        external
+        payable
+        haveTime
+        notOwner
+        onlyNotCanceled
+        returns (bool)
+    {
+        require(msg.value > 0, "you should send some eth");
+        uint256 newBid = s_offeredPrice[msg.sender] + msg.value;
+        require(newBid > s_highestBid, "offer a higher price than current one");
 
-        s_lastBid = msg.value;
+        if (s_isBidder[msg.sender] == false) {
+            s_isBidder[msg.sender] = true;
+            if (s_offeredPrice[msg.sender] == 0) {
+                s_biddersList.push(msg.sender);
+            }
+        }
+        s_offeredPrice[msg.sender] = newBid;
+        s_highestBid = newBid;
         s_winner = msg.sender;
-        emit highestBidIncreased(
+        emit highestBidChanged(
             s_winner,
-            s_lastBid,
+            s_highestBid,
             "Highest Offer is Changed"
         );
+        return true;
     }
 
     //How much do you wanna raise your bid?
-    function IncreaseBid() external payable haveTime {
-        require(
-            s_offeredPrice[msg.sender] != 0,
-            "You,ve not bid before, first use Bid then use this to higher your offer"
-        );
+    /*function IncreaseBid() external payable haveTime {
         require(
             s_isBidderOut[msg.sender] == false,
             "Sorry, you have canceled your bid"
@@ -94,36 +127,65 @@ contract Auction {
         s_offeredPrice[msg.sender] += msg.value;
         uint256 newBid = s_offeredPrice[msg.sender];
 
-        if (newBid > s_lastBid) {
-            s_lastBid = newBid;
+        if (newBid > s_highestBid) {
+            s_highestBid = newBid;
             s_winner = msg.sender;
-            emit highestBidIncreased(
+            emit highestBidChanged(
                 s_winner,
-                s_lastBid,
+                s_highestBid,
                 "Highest Offer is Changed"
             );
         }
+    }*/
+
+    function CancelAuction()
+        external
+        haveTime
+        onlyOwner
+        onlyNotCanceled
+        returns (bool)
+    {
+        s_canceled = true;
+        emit auctionCanceled();
+        return true;
     }
 
-    function CancelBid() external haveTime {
+    function CancelMyBid() external haveTime onlyNotCanceled {
         require(
-            s_offeredPrice[msg.sender] != 0,
-            "You can't use this, you did not bid yet"
+            s_isBidder[msg.sender],
+            "You can't use this,you have not bidden yet"
         );
-        s_isBidderOut[msg.sender] = true;
+        s_isBidder[msg.sender] = false;
         if (msg.sender == s_winner) {
-            (s_lastBid, s_winner) = getSecondLargeElement();
-            emit highestBidIncreased(
+            (s_highestBid, s_winner) = getSecondHighestBid();
+            emit highestBidChanged(
                 s_winner,
-                s_lastBid,
+                s_highestBid,
                 "Highest Offer is Changed"
             );
         }
     }
 
-    function EndAuction() external onlyOwner {
+    /*so about those who doesn't withdraw their money: their mapping balance should be reset before
+    next auction begins. 
+    1- automatic sending in setNewAuction() or
+    2- resetting their balance and let them lose their money.
+    */
+    function Withdraw() external payable onlyCanceledOrEnded returns (bool) {
+        require(msg.sender != getWinner(), "The winner can't withdraw money");
+        if (msg.sender == i_owner) {
+            Transfer(i_owner, getHighestBid());
+        } else {
+            Transfer(msg.sender, s_offeredPrice[msg.sender]);
+        }
+        s_offeredPrice[msg.sender] = 0;
+        s_isBidder[msg.sender] = false;
+        return true;
+    }
+
+    /*function EndAuction() external onlyOwner {
         require(block.timestamp >= s_startingTime + s_auctionDuration);
-        address theWinner = getCurrentWinner();
+        address theWinner = getWinner();
         Transfer(i_owner, s_offeredPrice[theWinner]); //sends the winner's bid to the owner's account.
         s_offeredPrice[theWinner] = 0;
 
@@ -138,20 +200,24 @@ contract Auction {
         }
 
         s_biddersList = new address[](0); //reseting the array to 0 element
-        emit auctionEnded(theWinner, s_lastBid, "The Auction's Time is Up");
-    }
+        emit auctionEnded(theWinner, s_highestBid, "The Auction's Time is Up");
+    }*/
 
     /**************************/
     function getOwner() public view returns (address) {
         return i_owner;
     }
 
-    function getLastBid() public view returns (uint256) {
-        return s_lastBid;
+    function getHighestBid() public view returns (uint256) {
+        return s_highestBid;
     }
 
-    function getCurrentWinner() public view returns (address) {
+    function getWinner() public view returns (address) {
         return s_winner;
+    }
+
+    function getMyBalance() public view returns (uint256) {
+        return s_offeredPrice[msg.sender];
     }
 
     function getLeftTime()
@@ -170,17 +236,15 @@ contract Auction {
             1 seconds;
     }
 
-    function getSecondLargeElement() internal view returns (uint256, address) {
+    function getSecondHighestBid() internal view returns (uint256, address) {
         uint256 thePrice;
         address theAddress;
         for (uint i = 0; i < s_biddersList.length; i++) {
-            if (s_isBidderOut[s_biddersList[i]] == false) {
+            if (s_isBidder[s_biddersList[i]]) {
                 uint256 offeredPrice = s_offeredPrice[s_biddersList[i]];
-                if (offeredPrice > thePrice) {
-                    if (offeredPrice != s_lastBid) {
-                        thePrice = offeredPrice;
-                        theAddress = s_biddersList[i];
-                    }
+                if (offeredPrice > thePrice && offeredPrice != s_highestBid) {
+                    thePrice = offeredPrice;
+                    theAddress = s_biddersList[i];
                 }
             }
         }
