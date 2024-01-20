@@ -34,12 +34,12 @@ contract TestAuction is Test {
         }
 
         vm.startPrank(address(8));
-        auction.IncreaseBid{value: 6 ether}();
-        auction.CancelBid();
+        auction.Bid{value: 6 ether}();
+        auction.CancelMyBid();
         vm.stopPrank();
 
-        console.log(auction.getCurrentWinner());
-        console.log(auction.getLastBid());
+        console.log(auction.getWinner());
+        console.log(auction.getHighestBid());
     }
 
     function test_EndAuction() public {
@@ -60,10 +60,9 @@ contract TestAuction is Test {
 
         skip(4000);
         vm.prank(auction.getOwner());
-        auction.EndAuction();
 
-        console.log(auction.getCurrentWinner());
-        console.log(auction.getLastBid());
+        console.log(auction.getWinner());
+        console.log(auction.getHighestBid());
     }
 
     modifier prep_user() {
@@ -80,8 +79,8 @@ contract TestAuction is Test {
         uint256 endGas = gasleft();
         uint256 gasUsed = (startGas - endGas) * tx.gasprice;
 
-        console.log(auction.getLastBid());
-        console.log(auction.getCurrentWinner());
+        console.log(auction.getHighestBid());
+        console.log(auction.getWinner());
         console.log(gasUsed);
     }
 
@@ -90,6 +89,5 @@ contract TestAuction is Test {
         auction.Bid{value: SEND_VALUE}();
 
         vm.expectRevert();
-        auction.EndAuction();
     }
 }

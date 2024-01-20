@@ -38,7 +38,7 @@ contract Voting {
     constructor(string[] memory candidateNames) {
         i_manager = msg.sender;
         s_voters[i_manager].weight = 1;
-        s_endTime = block.timestamp + 5 days;
+        s_endTime = block.timestamp + 5 minutes;
         s_candidate memory candidate;
         for (uint256 i = 0; i < candidateNames.length; i++) {
             candidate.name = stringToBytes32(candidateNames[i]);
@@ -140,6 +140,20 @@ contract Voting {
         candidate = s_candidatesList[winnerID];
         winner = string(abi.encodePacked(candidate.name));
         return (winner, winnerID, maxVote);
+    }
+
+    function getTheManager() public view returns (address) {
+        return i_manager;
+    }
+
+    function getVoters(address voter) public view returns (s_voter memory) {
+        return s_voters[voter];
+    }
+
+    function getCandids(
+        uint256 index
+    ) public view returns (s_candidate memory) {
+        return s_candidatesList[index];
     }
 
     function stringToBytes32(
