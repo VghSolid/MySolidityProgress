@@ -8,7 +8,7 @@ import {StdCheats} from "forge-std/StdCheats.sol";
 
 contract TestAuction is Test {
     Voting voting;
-    string[] candidateNames = ["ali", "mohammad", "shahram"];
+    string[] candidateNames = ["ali", "mohammad", "shahram", "bahram"];
 
     function setUp() external {
         DeployVoting deployVoting = new DeployVoting();
@@ -27,26 +27,32 @@ contract TestAuction is Test {
     function test_vote() public {
         vm.warp(0);
         vm.startPrank(voting.getTheManager());
-        for (uint160 i = 1; i < 100; i++) {
+        for (uint160 i = 0; i < 70; i++) {
             voting.giveRightToVote(address(i));
         }
         vm.stopPrank();
 
-        for (uint160 i = 0; i < 50; i++) {
+        for (uint160 i = 0; i < 10; i++) {
             vm.startPrank(address(i));
             uint256 index = voting.getCandidateID("ali");
             voting.Vote(index);
             vm.stopPrank();
         }
-        for (uint160 i = 50; i < 80; i++) {
+        for (uint160 i = 10; i < 30; i++) {
             vm.startPrank(address(i));
             uint256 index = voting.getCandidateID("mohammad");
             voting.Vote(index);
             vm.stopPrank();
         }
-        for (uint160 i = 80; i < 100; i++) {
+        for (uint160 i = 30; i < 50; i++) {
             vm.startPrank(address(i));
             uint256 index = voting.getCandidateID("shahram");
+            voting.Vote(index);
+            vm.stopPrank();
+        }
+        for (uint160 i = 50; i < 70; i++) {
+            vm.startPrank(address(i));
+            uint256 index = voting.getCandidateID("bahram");
             voting.Vote(index);
             vm.stopPrank();
         }
@@ -55,6 +61,10 @@ contract TestAuction is Test {
         console.log(voting.getCandids(0).countedVote);
         console.log(voting.getCandids(1).countedVote);
         console.log(voting.getCandids(2).countedVote);
+        console.log(voting.getCandids(3).countedVote);
+        vm.prank(voting.getTheManager());
+        voting.EndVoting();
+        console.log(voting.getWinners()[1]);
     }
 
     function test_vote_delegation() public {

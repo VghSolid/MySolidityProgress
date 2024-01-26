@@ -7,6 +7,7 @@ contract Voting {
 
     mapping(address => s_voter) private s_voters;
     s_candidate[] private s_candidatesList;
+    uint256[] private s_winnersID;
 
     struct s_voter {
         bool voted;
@@ -120,26 +121,38 @@ contract Voting {
         s_voters[msg.sender].voted = true;
     }
 
-    function getTheWinner()
-        public
-        view
-        votingEnded
-        returns (string memory, uint256, uint256)
-    {
+    function EndVoting() public votingEnded onlymanager {
         uint256 maxVote;
-        uint256 winnerID;
-        string memory winner;
         s_candidate memory candidate;
         for (uint256 i = 0; i < s_candidatesList.length; i++) {
             candidate = s_candidatesList[i];
             if (candidate.countedVote > maxVote) {
                 maxVote = candidate.countedVote;
-                winnerID = i;
             }
         }
-        candidate = s_candidatesList[winnerID];
-        winner = string(abi.encodePacked(candidate.name));
-        return (winner, winnerID, maxVote);
+        for (uint256 i = 0; i < s_candidatesList.length; i++) {
+            candidate = s_candidatesList[i];
+            if (candidate.countedVote == maxVote) {
+                s_winnersID.push(i);
+            }
+        }
+        /* The memory array code that didin't work as expected:
+        for (uint256 i = 0; i < s_candidatesList.length; i++) {
+            candidate = s_candidatesList[i];
+            if (candidate.countedVote == maxVote) {
+                j++;
+            }
+        }
+        string[] memory winnerNames = new string[](j);
+        for (uint256 i = 0; i < s_candidatesList.length; i++) {
+            candidate = s_candidatesList[i];
+            if (candidate.countedVote == maxVote) {
+                uint256 k;
+                winnerNames[k] = string(abi.encodePacked(candidate.name));
+                k++;
+            }
+        }
+        */
     }
 
     function getTheManager() public view returns (address) {
@@ -156,6 +169,15 @@ contract Voting {
         return s_candidatesList[index];
     }
 
+    function getWinners() public view returns (string[] memory) {
+        string[] memory winners = new string[](s_winnersID.length);
+        for (uint256 i = 0; i < s_winnersID.length; i++) {
+            uint256 j = s_winnersID[i];
+            winners[i] = string(abi.encodePacked(s_candidatesList[j].name));
+        }
+        return winners;
+    }
+
     function stringToBytes32(
         string memory name
     ) internal pure returns (bytes32) {
@@ -165,8 +187,8 @@ contract Voting {
 }
 
 /**
- * 1- add a function to show the names of candidates *****DONE*****
- * 3- this contract is not suited for mass votings
- * 4- how to collect voters' addresses in one array(or ??) and prevent double address entry by user
- * 5-
+ * 1- Multiple Winners: I can't solve this with memory arrays(for less gas consumption) but the state array will work(it's not gas-efficient)
+ * 2- Mass Voting: This code is apprpriate for small scale voting(like in compa). In case of mass voting: giveRightToVote() is not needed
+ *    instead we should use Proof of Humanity(or smth else like assigning a non-sellable NFT to every wallet??) to prevent sybil-attacks.
+ * 3-
  */
